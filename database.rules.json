@@ -1,0 +1,43 @@
+{
+  "rules": {
+    ".read": true,
+    ".write": false,
+
+    "apps": {
+      ".read": true,
+      ".indexOn": ["category", "downloads", "rating", "developerUid"],
+      "$appId": {
+        ".write": "!data.exists() ? auth != null : (data.child('developerUid').val() === auth.uid)",
+        ".validate": "newData.hasChildren(['name','category','downloadUrl','developerUid'])",
+        "downloads": {
+          ".write": "auth != null"
+        },
+        "rating": {
+          ".write": "auth != null"
+        },
+        "ratingCount": {
+          ".write": "auth != null"
+        }
+      }
+    },
+
+    "reviews": {
+      ".read": true,
+      "$appId": {
+        "$reviewId": {
+          ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid)",
+          ".validate": "newData.hasChildren(['uid','rating','timestamp']) && newData.child('rating').isNumber() && newData.child('rating').val() >= 1 && newData.child('rating').val() <= 5"
+        }
+      }
+    },
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "bookmarks": { "$appId": { ".validate": true } },
+        "uploadedApps": { "$appId": { ".validate": true } }
+      }
+    }
+  }
+}

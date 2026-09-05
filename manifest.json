@@ -1,0 +1,25 @@
+{
+  "name": "Nexbay — App & Game Store",
+  "short_name": "Nexbay",
+  "description": "Discover, download and publish apps, games and mods.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0D0F14",
+  "theme_color": "#0D0F14",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://api.iconify.design/ph:rocket-launch-fill.svg?color=%237c5cfc&width=192&height=192",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "https://api.iconify.design/ph:rocket-launch-fill.svg?color=%237c5cfc&width=512&height=512",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

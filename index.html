@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Nexbay — App & Game Store</title>
+<meta name="description" content="Nexbay is a store for apps, games and mods — fast downloads, honest ratings, built for creators.">
+
+<!-- Open Graph -->
+<meta property="og:title" content="Nexbay — App & Game Store">
+<meta property="og:description" content="Discover, download and publish apps, games and mods on Nexbay.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://api.iconify.design/ph:rocket-launch-duotone.svg?color=%237c5cfc">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d0f14">
+<link rel="apple-touch-icon" href="https://api.iconify.design/ph:rocket-launch-fill.svg?color=%237c5cfc">
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          base: { DEFAULT: '#0D0F14', soft: '#12151C' },
+          surface: { DEFAULT: '#161A23', hi: '#1D2230' },
+          line: '#262C3A',
+          ink: { DEFAULT: '#E9ECF4', dim: '#8A93A6' },
+          brand: { DEFAULT: '#7C5CFC', dim: '#5C3FE0', glow: '#A78BFA' },
+          teal: '#20E3D2',
+          flare: '#FF6B4A',
+          gold: '#F5B93E',
+          litebase: '#F5F4F1',
+          litesurf: '#FFFFFF',
+        },
+        fontFamily: {
+          display: ['"Space Grotesk"', 'sans-serif'],
+          body: ['"Inter"', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'monospace'],
+        },
+        boxShadow: {
+          glow: '0 0 0 1px rgba(124,92,252,0.25), 0 8px 30px -8px rgba(124,92,252,0.45)',
+        },
+        borderRadius: { xl2: '1.25rem' },
+      }
+    }
+  }
+</script>
+
+<!-- Firebase (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-storage-compat.js"></script>
+
+<style>
+  :root{ color-scheme: dark; }
+  html.light{ color-scheme: light; }
+  *{ scrollbar-width: thin; scrollbar-color: #3a4152 transparent; }
+  ::-webkit-scrollbar{ height:8px; width:8px; }
+  ::-webkit-scrollbar-thumb{ background:#3a4152; border-radius:8px; }
+  html.light ::-webkit-scrollbar-thumb{ background:#d8d5cd; }
+  body{ font-family:'Inter',sans-serif; }
+
+  .glass{
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  html.light .glass{
+    background: linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,255,255,0.55));
+    border: 1px solid rgba(20,20,30,0.06);
+  }
+
+  .noise{
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  }
+
+  .track-x{ scroll-snap-type: x mandatory; }
+  .snap-item{ scroll-snap-align: start; }
+
+  .skel{ position:relative; overflow:hidden; background:rgba(255,255,255,0.06); }
+  .skel::after{
+    content:''; position:absolute; inset:0; transform:translateX(-100%);
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,0.09), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+  @keyframes shimmer{ 100%{ transform:translateX(100%); } }
+
+  .rating-star{ transition: transform .12s ease; }
+  .rating-star:hover{ transform: scale(1.25); }
+
+  .fade-in{ animation: fadeIn .35s ease both; }
+  @keyframes fadeIn{ from{ opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+
+  .chip{ transition: background .18s ease, color .18s ease, border-color .18s ease; }
+
+  .card-lift{ transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+  .card-lift:hover{ transform: translateY(-3px); border-color: rgba(124,92,252,0.5); }
+
+  dialog::backdrop{ background: rgba(5,6,10,0.72); backdrop-filter: blur(4px); }
+  dialog{ background:transparent; border:none; padding:0; max-width:none; max-height:none; }
+
+  input[type="range"]{ accent-color:#7C5CFC; }
+
+  .toast-wrap{ position:fixed; top:1rem; left:50%; transform:translateX(-50%); z-index:200; display:flex; flex-direction:column; gap:.5rem; align-items:center; pointer-events:none; }
+
+  .progress-ring{ transform: rotate(-90deg); }
+
+  @media (max-width: 767px){
+    .safe-bottom{ padding-bottom: env(safe-area-inset-bottom); }
+  }
+
+  .prose-desc p{ margin-bottom:.6rem; }
+  .prose-desc strong{ color: inherit; font-weight:600; }
+
+  ::selection{ background: rgba(124,92,252,0.35); }
+</style>
+</head>
+
+<body class="bg-base text-ink font-body antialiased min-h-screen">
+
+<!-- ===================== BACKDROP ===================== -->
+<div class="fixed inset-0 -z-10 noise bg-base"></div>
+<div class="fixed -z-10 top-[-10%] left-[-10%] w-[520px] h-[520px] rounded-full bg-brand/20 blur-[140px]"></div>
+<div class="fixed -z-10 bottom-[-15%] right-[-10%] w-[480px] h-[480px] rounded-full bg-teal/10 blur-[140px]"></div>
+
+<!-- ===================== HEADER ===================== -->
+<header class="sticky top-0 z-40 border-b border-line/70 glass">
+  <div class="max-w-[1400px] mx-auto px-4 md:px-6 h-16 flex items-center gap-3 md:gap-5">
+
+    <button id="btn-menu" class="md:hidden w-9 h-9 grid place-items-center rounded-lg border border-line text-ink/80" aria-label="Menu">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+
+    <a href="#/home" class="flex items-center gap-2 shrink-0">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand to-teal grid place-items-center shadow-glow">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 2 3 7v10l9 5 9-5V7l-9-5Z" stroke="#0D0F14" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      </div>
+      <span class="font-display font-700 text-lg tracking-tight hidden sm:block">Nexbay</span>
+    </a>
+
+    <!-- search -->
+    <div class="relative flex-1 max-w-xl">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-ink/40" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m21 21-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="search-input" type="text" placeholder="Search apps, games, mods…"
+        class="w-full bg-surface/80 border border-line focus:border-brand/70 outline-none rounded-full h-10 pl-9 pr-9 text-sm placeholder:text-ink/40 transition-colors" autocomplete="off">
+      <button id="search-clear" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink" aria-label="Clear">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div id="search-suggest" class="hidden absolute mt-2 left-0 right-0 rounded-xl border border-line bg-surface shadow-2xl overflow-hidden max-h-80 overflow-y-auto z-50"></div>
+    </div>
+
+    <button id="btn-theme" class="w-9 h-9 shrink-0 grid place-items-center rounded-lg border border-line text-ink/80 hover:text-brand hover:border-brand/50" aria-label="Toggle theme">
+      <svg id="icon-moon" width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1 1 11.2 3 7.2 7.2 0 0 0 21 12.8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      <svg id="icon-sun" class="hidden" width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2.4M12 19.6V22M22 12h-2.4M4.4 12H2M18.7 5.3l-1.7 1.7M7 17l-1.7 1.7M18.7 18.7 17 17M7 7 5.3 5.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+
+    <button id="btn-publish-nav" class="hidden md:flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-line text-sm text-ink/80 hover:border-brand/60 hover:text-brand">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Publish
+    </button>
+
+    <button id="btn-auth" class="shrink-0 h-9 px-3.5 md:px-4 rounded-lg bg-brand text-white text-sm font-medium hover:bg-brand-dim transition-colors">Log in</button>
+    <button id="btn-profile" class="hidden shrink-0 w-9 h-9 rounded-full overflow-hidden border-2 border-brand/60">
+      <img id="profile-avatar-btn" src="" class="w-full h-full object-cover" alt="Profile">
+    </button>
+  </div>
+
+  <!-- category bar -->
+  <div class="border-t border-line/60">
+    <nav class="max-w-[1400px] mx-auto px-4 md:px-6 flex items-center gap-1.5 h-11 overflow-x-auto" id="cat-nav">
+      <!-- injected -->
+    </nav>
+  </div>
+</header>
+
+<!-- ===================== MOBILE DRAWER ===================== -->
+<div id="drawer-backdrop" class="hidden fixed inset-0 z-50 bg-black/60"></div>
+<aside id="drawer" class="fixed top-0 left-0 z-50 h-full w-72 -translate-x-full transition-transform duration-300 bg-surface border-r border-line p-5 flex flex-col gap-1">
+  <div class="flex items-center justify-between mb-4">
+    <span class="font-display font-700 text-lg">Nexbay</span>
+    <button id="drawer-close" class="w-8 h-8 grid place-items-center rounded-lg border border-line"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+  </div>
+  <div id="drawer-links" class="flex flex-col gap-1"></div>
+  <div class="mt-auto pt-4 border-t border-line/70 text-xs text-ink/40 font-mono">Nexbay v1.0 · Built for creators</div>
+</aside>
+
+<!-- ===================== MAIN ===================== -->
+<main id="app-root" class="max-w-[1400px] mx-auto px-4 md:px-6 pb-24 md:pb-14 min-h-[70vh]"></main>
+
+<!-- bottom tab bar (mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 glass border-t border-line safe-bottom">
+  <div class="grid grid-cols-5 h-16" id="tab-bar"></div>
+</nav>
+
+<footer class="hidden md:block border-t border-line/60 mt-10">
+  <div class="max-w-[1400px] mx-auto px-6 py-10 flex flex-col md:flex-row justify-between gap-4 text-sm text-ink/50">
+    <p>© <span id="year"></span> Nexbay. Every app here is reviewed by the community, not an algorithm.</p>
+    <div class="flex gap-5">
+      <a href="#/category/all" class="hover:text-ink">All Apps</a>
+      <a href="#/publish" class="hover:text-ink">Publish</a>
+      <a href="#/profile" class="hover:text-ink">Profile</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ===================== TOASTS ===================== -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- ===================== AUTH MODAL ===================== -->
+<dialog id="auth-modal">
+  <div class="fixed inset-0 z-50 grid place-items-center p-4">
+    <div class="w-full max-w-sm rounded-xl2 border border-line bg-surface p-6 fade-in relative">
+      <button data-close-auth class="absolute top-4 right-4 text-ink/40 hover:text-ink"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <h2 id="auth-title" class="font-display text-xl font-600 mb-1">Welcome back</h2>
+      <p class="text-sm text-ink/50 mb-5">Log in to download, bookmark and review apps.</p>
+
+      <div class="flex flex-col gap-3">
+        <input id="auth-name" type="text" placeholder="Display name" class="hidden w-full h-11 rounded-lg bg-base border border-line px-3.5 text-sm outline-none focus:border-brand/70">
+        <input id="auth-email" type="email" placeholder="Email address" class="w-full h-11 rounded-lg bg-base border border-line px-3.5 text-sm outline-none focus:border-brand/70">
+        <input id="auth-pass" type="password" placeholder="Password" class="w-full h-11 rounded-lg bg-base border border-line px-3.5 text-sm outline-none focus:border-brand/70">
+        <p id="auth-error" class="hidden text-xs text-flare"></p>
+        <button id="auth-submit" class="w-full h-11 rounded-lg bg-brand text-white font-medium text-sm hover:bg-brand-dim">Log in</button>
+      </div>
+
+      <p class="text-center text-sm text-ink/50 mt-5">
+        <span id="auth-switch-text">Don't have an account?</span>
+        <button id="auth-switch" class="text-brand font-medium hover:underline">Sign up</button>
+      </p>
+    </div>
+  </div>
+</dialog>
+
+<!-- ===================== APP DETAIL MODAL ===================== -->
+<dialog id="app-modal">
+  <div class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="min-h-full flex items-start md:items-center justify-center p-0 md:p-4">
+      <div id="app-modal-body" class="w-full md:max-w-3xl md:rounded-xl2 bg-base md:border md:border-line min-h-screen md:min-h-0 fade-in"></div>
+    </div>
+  </div>
+</dialog>
+
+<script>
+/* =========================================================================
+   FIREBASE CONFIG
+   Replace with your own project config if you fork this for another app.
+   These values came from the user-provided google-services.json (recomail
+   project) and target the Realtime Database.
+   ========================================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyCOyQjrMlesiZuotfYxf7fzq1vsVfksSgI",
+  authDomain: "recomail-5bd5f.firebaseapp.com",
+  databaseURL: "https://recomail-5bd5f-default-rtdb.firebaseio.com",
+  projectId: "recomail-5bd5f",
+  storageBucket: "recomail-5bd5f.firebasestorage.app",
+  messagingSenderId: "314488808811",
+  appId: "1:314488808811:web:nexbaystoreweb"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.database();
+// Storage is optional — only touched if a user picks a file instead of a URL.
+let storage = null;
+try { storage = firebase.storage(); } catch(e) { /* storage bucket not enabled, URL uploads still work */ }
+
+/* =========================================================================
+   STATE
+   ========================================================================= */
+const state = {
+  theme: localStorage.getItem('nexbay_theme') || 'dark',
+  user: null,          // firebase auth user
+  profile: null,       // /users/{uid} node
+  apps: {},            // id -> app object (live cache from Firebase)
+  appsLoaded: false,
+  authMode: 'login',
+  currentCategory: 'all',
+  searchTerm: '',
+  route: parseHash(),
+};
+
+const CATEGORIES = [
+  { id: 'all',      label: 'All Apps', icon: 'ph:squares-four' },
+  { id: 'games',    label: 'Games', icon: 'ph:game-controller' },
+  { id: 'mods',     label: 'Mods & Tools', icon: 'ph:wrench' },
+  { id: 'trending', label: 'Trending', icon: 'ph:flame' },
+  { id: 'top',      label: 'Top Rated', icon: 'ph:star' },
+];
+
+const DEMO_APPS = seedDemoApps();
+
+function applyTheme(){
+  document.documentElement.classList.toggle('light', state.theme === 'light');
+  document.documentElement.classList.toggle('dark', state.theme !== 'light');
+  document.body.classList.toggle('bg-litebase', state.theme === 'light');
+  document.body.classList.toggle('text-[#20232B]', state.theme === 'light');
+  document.getElementById('icon-moon').classList.toggle('hidden', state.theme === 'light');
+  document.getElementById('icon-sun').classList.toggle('hidden', state.theme !== 'light');
+}
+applyTheme();
+
+/* =========================================================================
+   UTILITIES
+   ========================================================================= */
+function fmtNum(n){
+  n = Number(n||0);
+  if(n >= 1000000) return (n/1000000).toFixed(1).replace(/\.0$/,'')+'M';
+  if(n >= 1000) return (n/1000).toFixed(1).replace(/\.0$/,'')+'K';
+  return String(n);
+}
+function timeAgo(ts){
+  const s = Math.floor((Date.now()-ts)/1000);
+  const units = [[31536000,'y'],[2592000,'mo'],[86400,'d'],[3600,'h'],[60,'m']];
+  for(const [sec,label] of units){ if(s>=sec) return Math.floor(s/sec)+label+' ago'; }
+  return 'just now';
+}
+function escapeHtml(str){
+  return String(str||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function stars(rating, size=14){
+  rating = Number(rating)||0;
+  let html = '<span class="inline-flex items-center gap-0.5">';
+  for(let i=1;i<=5;i++){
+    const fill = rating >= i ? '#F5B93E' : (rating >= i-0.5 ? 'url(#half)' : 'none');
+    html += `<svg width="${size}" height="${size}" viewBox="0 0 24 24"><defs><linearGradient id="half"><stop offset="50%" stop-color="#F5B93E"/><stop offset="50%" stop-color="transparent"/></linearGradient></defs><path d="m12 3 2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 16.9l-5.6 3.2 1.4-6.3-4.8-4.3 6.4-.6L12 3Z" fill="${fill}" stroke="#F5B93E" stroke-width="1.1"/></svg>`;
+  }
+  html += '</span>';
+  return html;
+}
+function toast(msg, kind='default'){
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  const tones = { default:'bg-surface border-line text-ink', success:'bg-teal/15 border-teal/40 text-teal', error:'bg-flare/15 border-flare/40 text-flare' };
+  el.className = `px-4 py-2.5 rounded-lg border text-sm shadow-xl fade-in ${tones[kind]||tones.default}`;
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),300); }, 2600);
+}
+function parseHash(){
+  const h = location.hash.replace(/^#\//,'') || 'home';
+  const parts = h.split('/');
+  return { name: parts[0]||'home', param: parts[1] ? decodeURIComponent(parts[1]) : null };
+}
+function navigate(hash){ location.hash = hash; }
+
+/* =========================================================================
+   DEMO SEED DATA (used only if the database has no apps yet — gives the
+   store something to show on first run, and doubles as a schema reference)
+   ========================================================================= */
+function seedDemoApps(){
+  const now = Date.now();
+  const mk = (o) => Object.assign({
+    rating: 4.5, ratingCount: 120, downloads: 5000, verified: true,
+    size: '48 MB', requirements: 'Android 8.0+', packageName: 'com.nexbay.demo',
+    createdAt: now, updatedAt: now, screenshots: [], whatsNew: 'Performance improvements and bug fixes.'
+  }, o);
+  return {
+    d1: mk({ name:'Rift Racer 3D', tagline:'Arcade bike racing, Indian roads edition', category:'games', developer:'Loop Studios', developerUid:'demo', logoUrl:'https://api.iconify.design/game-icons:motorcycle-helmet.svg?color=%237C5CFC&width=200', downloadUrl:'#', version:'2.4.0', rating:4.7, ratingCount:2140, downloads:184000, description:'Race across procedurally generated Indian highways on six licensed-style motorcycles. Tilt or touch controls, career mode, and daily challenges.' }),
+    d2: mk({ name:'PixelForge Mod Menu', tagline:'Texture & config editor for sandbox games', category:'mods', developer:'ForgeLabs', developerUid:'demo', logoUrl:'https://api.iconify.design/ph:wrench-fill.svg?color=%23FF6B4A&width=200', downloadUrl:'#', version:'1.9.2', rating:4.2, ratingCount:860, downloads:52000, description:'Swap textures, adjust spawn rates and tweak configs without touching raw files. Undo history built in.' }),
+    d3: mk({ name:'Void Protocol', tagline:'Sci-fi battle royale, 40-player lobbies', category:'games', developer:'Nightshade Games', developerUid:'demo', logoUrl:'https://api.iconify.design/game-icons:laser-warning.svg?color=%2320E3D2&width=200', downloadUrl:'#', version:'0.8.1', rating:4.4, ratingCount:410, downloads:31000, description:'Drop into shifting biomes, loot shifting weapon tiers, and squad up with a real-time friends list.' }),
+    d4: mk({ name:'Recomail', tagline:'Fast, minimal webmail for everyone', category:'tools', developer:'Rahul', developerUid:'demo', logoUrl:'https://api.iconify.design/ph:envelope-simple-fill.svg?color=%237C5CFC&width=200', downloadUrl:'#', version:'3.1.0', rating:4.8, ratingCount:98, downloads:4300, description:'Compose, search and star mail with real-time sync — inbox, sent, drafts and trash in one clean view.' }),
+    d5: mk({ name:'OX Arena', tagline:'Real-time multiplayer tic-tac-toe', category:'games', developer:'Sriey Labs', developerUid:'demo', logoUrl:'https://api.iconify.design/ph:x-square-fill.svg?color=%23F5B93E&width=200', downloadUrl:'#', version:'1.3.0', rating:4.1, ratingCount:212, downloads:9800, description:'Create a room, share the code, and battle a friend live with synced boards and win-streak tracking.' }),
+    d6: mk({ name:'Sriey Chat', tagline:'Messenger-style chat with voice & calls', category:'tools', developer:'Sriey Labs', developerUid:'demo', logoUrl:'https://api.iconify.design/ph:chat-circle-dots-fill.svg?color=%2320E3D2&width=200', downloadUrl:'#', version:'4.0.2', rating:4.6, ratingCount:530, downloads:41000, description:'WhatsApp-style OTP login, reactions, replies, voice notes and WebRTC calling — all in one Bengali-first app.' }),
+  };
+}
+
+/* =========================================================================
+   FIREBASE: DATA LAYER
+   ========================================================================= */
+function listenApps(){
+  db.ref('apps').on('value', snap => {
+    const val = snap.val();
+    state.apps = (val && Object.keys(val).length) ? val : DEMO_APPS;
+    state.appsLoaded = true;
+    render();
+  }, err => {
+    console.warn('DB read failed, using demo data:', err.message);
+    state.apps = DEMO_APPS;
+    state.appsLoaded = true;
+    render();
+  });
+}
+
+function listenAuth(){
+  auth.onAuthStateChanged(async user => {
+    state.user = user;
+    if(user){
+      const snap = await db.ref('users/'+user.uid).get().catch(()=>null);
+      state.profile = (snap && snap.exists()) ? snap.val() : { name:user.displayName||'User', avatar:'', bookmarks:{}, uploadedApps:{} };
+      if(!snap || !snap.exists()){
+        await db.ref('users/'+user.uid).set(state.profile).catch(()=>{});
+      }
+      document.getElementById('btn-auth').classList.add('hidden');
+      document.getElementById('btn-profile').classList.remove('hidden');
+      document.getElementById('profile-avatar-btn').src = state.profile.avatar || avatarFallback(state.profile.name);
+    } else {
+      state.profile = null;
+      document.getElementById('btn-auth').classList.remove('hidden');
+      document.getElementById('btn-profile').classList.add('hidden');
+    }
+    render();
+  });
+}
+function avatarFallback(name){
+  const letter = (name||'U').trim()[0]?.toUpperCase() || 'U';
+  return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(letter)}&backgroundColor=7C5CFC&textColor=ffffff`;
+}
+
+async function toggleBookmark(appId){
+  if(!requireAuth()) return;
+  const uid = state.user.uid;
+  const isBookmarked = !!(state.profile.bookmarks && state.profile.bookmarks[appId]);
+  const ref = db.ref(`users/${uid}/bookmarks/${appId}`);
+  if(isBookmarked){ await ref.remove(); delete state.profile.bookmarks[appId]; toast('Removed from bookmarks'); }
+  else { await ref.set(true); state.profile.bookmarks = state.profile.bookmarks||{}; state.profile.bookmarks[appId] = true; toast('Bookmarked', 'success'); }
+  render();
+}
+
+async function incrementDownload(appId){
+  const ref = db.ref(`apps/${appId}/downloads`);
+  db.ref(`apps/${appId}`).get().then(snap=>{
+    const cur = snap.exists() ? (snap.val().downloads||0) : (state.apps[appId]?.downloads||0);
+    ref.set(cur+1).catch(()=>{});
+  }).catch(()=>{});
+}
+
+async function submitReview(appId, rating, text){
+  if(!requireAuth()) return;
+  const review = {
+    uid: state.user.uid,
+    userName: state.profile.name || state.user.email.split('@')[0],
+    avatar: state.profile.avatar || avatarFallback(state.profile.name),
+    rating, text, timestamp: Date.now()
+  };
+  const key = db.ref('reviews/'+appId).push().key;
+  await db.ref(`reviews/${appId}/${key}`).set(review);
+
+  // recompute aggregate rating
+  const snap = await db.ref('reviews/'+appId).get();
+  const all = snap.exists() ? Object.values(snap.val()) : [review];
+  const avg = all.reduce((s,r)=>s+Number(r.rating),0) / all.length;
+  await db.ref(`apps/${appId}`).update({ rating: Math.round(avg*10)/10, ratingCount: all.length });
+  toast('Review posted', 'success');
+  openAppDetail(appId, true);
+}
+
+async function publishApp(payload){
+  const uid = state.user.uid;
+  const key = db.ref('apps').push().key;
+  const app = Object.assign({
+    developerUid: uid,
+    developer: state.profile.name || state.user.email.split('@')[0],
+    rating: 0, ratingCount: 0, downloads: 0, verified: false,
+    createdAt: Date.now(), updatedAt: Date.now(),
+  }, payload);
+  await db.ref('apps/'+key).set(app);
+  await db.ref(`users/${uid}/uploadedApps/${key}`).set(true);
+  state.profile.uploadedApps = state.profile.uploadedApps || {};
+  state.profile.uploadedApps[key] = true;
+  toast('App published!', 'success');
+  navigate('#/app/'+key);
+}
+
+async function deleteApp(appId){
+  if(!confirm('Delete this app permanently?')) return;
+  await db.ref('apps/'+appId).remove();
+  await db.ref(`users/${state.user.uid}/uploadedApps/${appId}`).remove();
+  delete state.profile.uploadedApps[appId];
+  toast('App deleted');
+  navigate('#/profile');
+}
+
+function requireAuth(){
+  if(!state.user){ openAuthModal('login'); toast('Log in first', 'error'); return false; }
+  return true;
+}
+
+/* =========================================================================
+   AUTH MODAL
+   ========================================================================= */
+const authModal = document.getElementById('auth-modal');
+function openAuthModal(mode){
+  state.authMode = mode;
+  document.getElementById('auth-name').classList.toggle('hidden', mode==='login');
+  document.getElementById('auth-title').textContent = mode==='login' ? 'Welcome back' : 'Create your account';
+  document.getElementById('auth-submit').textContent = mode==='login' ? 'Log in' : 'Sign up';
+  document.getElementById('auth-switch-text').textContent = mode==='login' ? "Don't have an account?" : 'Already have an account?';
+  document.getElementById('auth-switch').textContent = mode==='login' ? 'Sign up' : 'Log in';
+  document.getElementById('auth-error').classList.add('hidden');
+  document.getElementById('auth-email').value = '';
+  document.getElementById('auth-pass').value = '';
+  document.getElementById('auth-name').value = '';
+  authModal.showModal();
+}
+document.getElementById('btn-auth').onclick = () => openAuthModal('login');
+document.querySelectorAll('[data-close-auth]').forEach(b => b.onclick = () => authModal.close());
+authModal.addEventListener('click', e => { if(e.target === authModal) authModal.close(); });
+document.getElementById('auth-switch').onclick = () => openAuthModal(state.authMode==='login' ? 'signup' : 'login');
+
+document.getElementById('auth-submit').onclick = async () => {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass = document.getElementById('auth-pass').value;
+  const name = document.getElementById('auth-name').value.trim();
+  const errEl = document.getElementById('auth-error');
+  errEl.classList.add('hidden');
+  if(!email || !pass){ errEl.textContent = 'Enter an email and password.'; errEl.classList.remove('hidden'); return; }
+  try{
+    if(state.authMode === 'login'){
+      await auth.signInWithEmailAndPassword(email, pass);
+    } else {
+      const cred = await auth.createUserWithEmailAndPassword(email, pass);
+      await cred.user.updateProfile({ displayName: name || email.split('@')[0] });
+      await db.ref('users/'+cred.user.uid).set({ name: name || email.split('@')[0], avatar:'', bookmarks:{}, uploadedApps:{} });
+    }
+    authModal.close();
+    toast('Welcome to Nexbay', 'success');
+  } catch(e){
+    errEl.textContent = e.message.replace('Firebase: ','');
+    errEl.classList.remove('hidden');
+  }
+};
+document.getElementById('btn-profile').onclick = () => navigate('#/profile');
+
+/* =========================================================================
+   THEME + DRAWER + NAV WIRES
+   ========================================================================= */
+document.getElementById('btn-theme').onclick = () => {
+  state.theme = state.theme === 'light' ? 'dark' : 'light';
+  localStorage.setItem('nexbay_theme', state.theme);
+  applyTheme();
+};
+document.getElementById('btn-menu').onclick = () => {
+  document.getElementById('drawer').classList.remove('-translate-x-full');
+  document.getElementById('drawer-backdrop').classList.remove('hidden');
+};
+function closeDrawer(){
+  document.getElementById('drawer').classList.add('-translate-x-full');
+  document.getElementById('drawer-backdrop').classList.add('hidden');
+}
+document.getElementById('drawer-close').onclick = closeDrawer;
+document.getElementById('drawer-backdrop').onclick = closeDrawer;
+document.getElementById('btn-publish-nav').onclick = () => { requireAuth() && navigate('#/publish'); };
+
+function renderCategoryNav(){
+  const bar = document.getElementById('cat-nav');
+  bar.innerHTML = CATEGORIES.map(c => `
+    <button data-cat="${c.id}" class="chip cat-chip shrink-0 h-8 px-3.5 rounded-full text-sm border ${state.currentCategory===c.id && state.route.name!=='home' ? 'bg-brand text-white border-brand' : 'border-line text-ink/60 hover:text-ink hover:border-ink/30'}">${c.label}</button>
+  `).join('');
+  bar.querySelectorAll('.cat-chip').forEach(b => b.onclick = () => navigate('#/category/'+b.dataset.cat));
+
+  document.getElementById('drawer-links').innerHTML = [
+    ['#/home','Home','ph:house'], ...CATEGORIES.map(c=>['#/category/'+c.id, c.label]), ['#/publish','Publish an app'], ['#/profile','Profile']
+  ].map(([href,label]) => `<a href="${href}" class="px-3 py-2.5 rounded-lg text-sm text-ink/70 hover:bg-white/5 hover:text-ink" data-drawer-link>${label}</a>`).join('');
+  document.querySelectorAll('[data-drawer-link]').forEach(a => a.onclick = closeDrawer);
+
+  document.getElementById('tab-bar').innerHTML = [
+    ['home','Home','M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-8Z'],
+    ['category/games','Games','M6 9h.01M18 9h.01M8 15c1-1 2-1.5 4-1.5s3 .5 4 1.5M4 6h16l1 9a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3L4 6Z'],
+    ['publish','Publish','M12 5v14M5 12h14'],
+    ['category/mods','Mods','M14.7 6.3a4 4 0 0 0-5.4 5.4l-6 6V21h3.3l6-6a4 4 0 0 0 5.4-5.4l-2.6 2.6-2-2 2.6-2.6Z'],
+    ['profile','Profile','M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0'],
+  ].map(([route,label,path]) => `
+    <a href="#/${route}" class="flex flex-col items-center justify-center gap-1 text-[10px] ${state.route.name===route.split('/')[0] ? 'text-brand' : 'text-ink/50'}">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="${path}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      ${label}
+    </a>`).join('');
+}
+
+/* =========================================================================
+   SEARCH
+   ========================================================================= */
+const searchInput = document.getElementById('search-input');
+const suggestBox = document.getElementById('search-suggest');
+searchInput.addEventListener('input', () => {
+  const term = searchInput.value.trim().toLowerCase();
+  state.searchTerm = term;
+  document.getElementById('search-clear').classList.toggle('hidden', !term);
+  if(!term){ suggestBox.classList.add('hidden'); return; }
+  const matches = Object.entries(state.apps)
+    .filter(([id,a]) => a.name.toLowerCase().includes(term) || (a.tagline||'').toLowerCase().includes(term))
+    .slice(0,6);
+  if(!matches.length){ suggestBox.innerHTML = `<div class="p-4 text-sm text-ink/40">No matches for “${escapeHtml(searchInput.value)}”</div>`; suggestBox.classList.remove('hidden'); return; }
+  suggestBox.innerHTML = matches.map(([id,a]) => `
+    <button data-go="${id}" class="w-full flex items-center gap-3 px-3.5 py-2.5 hover:bg-white/5 text-left">
+      <img src="${a.logoUrl}" class="w-8 h-8 rounded-lg object-cover" onerror="this.src='https://api.iconify.design/ph:app-window.svg?color=%237C5CFC'">
+      <span class="flex-1 min-w-0"><span class="block text-sm truncate">${escapeHtml(a.name)}</span><span class="block text-xs text-ink/40 truncate">${escapeHtml(a.tagline||'')}</span></span>
+      <span class="text-xs text-ink/40 shrink-0">${a.category}</span>
+    </button>`).join('');
+  suggestBox.classList.remove('hidden');
+  suggestBox.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { navigate('#/app/'+b.dataset.go); suggestBox.classList.add('hidden'); searchInput.value=''; document.getElementById('search-clear').classList.add('hidden'); });
+});
+document.getElementById('search-clear').onclick = () => { searchInput.value=''; state.searchTerm=''; suggestBox.classList.add('hidden'); document.getElementById('search-clear').classList.add('hidden'); render(); };
+document.addEventListener('click', e => { if(!e.target.closest('#search-suggest') && !e.target.closest('#search-input')) suggestBox.classList.add('hidden'); });
+searchInput.addEventListener('keydown', e => { if(e.key==='Enter'){ suggestBox.classList.add('hidden'); navigate('#/category/all'); render(); } });
+
+/* =========================================================================
+   CARD RENDERERS
+   ========================================================================= */
+function appCard(id, a, size='normal'){
+  const isBookmarked = !!(state.profile?.bookmarks?.[id]);
+  return `
+  <div data-open="${id}" class="card-lift cursor-pointer group rounded-xl2 border border-line bg-surface/60 p-3.5 flex flex-col gap-3">
+    <div class="flex gap-3">
+      <img src="${a.logoUrl}" alt="${escapeHtml(a.name)}" class="w-16 h-16 rounded-2xl object-cover border border-line shrink-0" onerror="this.src='https://api.iconify.design/ph:app-window.svg?color=%237C5CFC&width=200'">
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-1.5">
+          <h3 class="font-display font-600 text-[15px] truncate">${escapeHtml(a.name)}</h3>
+          ${a.verified ? '<svg width="14" height="14" viewBox="0 0 24 24" class="shrink-0"><path d="m9 12 2 2 4-4" stroke="#20E3D2" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="#20E3D2" stroke-width="1.4"/></svg>' : ''}
+        </div>
+        <p class="text-xs text-ink/45 truncate">${escapeHtml(a.tagline||a.developer||'')}</p>
+        <div class="flex items-center gap-2 mt-1.5 text-xs text-ink/60">
+          ${stars(a.rating,12)}<span>${(a.rating||0).toFixed(1)}</span><span class="text-ink/25">·</span><span>${fmtNum(a.downloads)}+</span>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center justify-between">
+      <span class="text-[11px] font-mono px-2 py-0.5 rounded-md border border-line text-ink/50">v${escapeHtml(a.version||'1.0')}</span>
+      <div class="flex items-center gap-1.5">
+        <button data-bookmark="${id}" class="w-8 h-8 grid place-items-center rounded-lg border border-line hover:border-brand/50 ${isBookmarked?'text-gold border-gold/40':'text-ink/50'}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="${isBookmarked?'currentColor':'none'}"><path d="M6 4h12v17l-6-3.5L6 21V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        </button>
+        <button data-quickdl="${id}" class="h-8 px-3 rounded-lg bg-brand/90 hover:bg-brand text-white text-xs font-medium">Get</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function wireCards(root){
+  root.querySelectorAll('[data-open]').forEach(el => el.addEventListener('click', (e) => {
+    if(e.target.closest('[data-bookmark],[data-quickdl]')) return;
+    navigate('#/app/'+el.dataset.open);
+  }));
+  root.querySelectorAll('[data-bookmark]').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); toggleBookmark(el.dataset.bookmark); }));
+  root.querySelectorAll('[data-quickdl]').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); const id=el.dataset.quickdl; incrementDownload(id); const a=state.apps[id]; if(a?.downloadUrl && a.downloadUrl!=='#') window.open(a.downloadUrl,'_blank'); toast('Download started','success'); }));
+}
+
+/* =========================================================================
+   VIEWS
+   ========================================================================= */
+const root = document.getElementById('app-root');
+
+function render(){
+  renderCategoryNav();
+  const r = state.route;
+  if(r.name === 'home') return renderHome();
+  if(r.name === 'category') return renderCategory(r.param || 'all');
+  if(r.name === 'app') return renderAppPage(r.param);
+  if(r.name === 'publish') return renderPublish();
+  if(r.name === 'profile') return renderProfile();
+  renderHome();
+}
+
+function skeletonGrid(n=8){
+  return `<div class="grid grid-cols-2 md:grid-cols-4 gap-3.5">${Array.from({length:n}).map(()=>`<div class="skel h-40 rounded-xl2 border border-line"></div>`).join('')}</div>`;
+}
+
+function renderHome(){
+  if(!state.appsLoaded){ root.innerHTML = `<div class="pt-6">${skeletonGrid()}</div>`; return; }
+  const all = Object.entries(state.apps);
+  const featured = all.filter(([,a]) => a.rating >= 4.4).slice(0,6);
+  const trending = [...all].sort((a,b)=> (b[1].downloads||0)-(a[1].downloads||0)).slice(0,8);
+  const games = all.filter(([,a]) => a.category==='games').slice(0,8);
+  const topRated = [...all].sort((a,b)=> (b[1].rating||0)-(a[1].rating||0)).slice(0,8);
+
+  root.innerHTML = `
+    <section class="pt-5 md:pt-8">
+      <div class="flex gap-3.5 overflow-x-auto track-x pb-2 -mx-1 px-1" id="hero-slider">
+        ${featured.map(([id,a],i)=>`
+        <div data-open="${id}" class="snap-item cursor-pointer shrink-0 w-[86%] sm:w-[420px] rounded-xl2 border border-line overflow-hidden relative h-48 group">
+          <div class="absolute inset-0 bg-gradient-to-br ${['from-brand/40 to-teal/10','from-flare/30 to-brand/20','from-teal/25 to-brand/25'][i%3]}"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
+          <span class="absolute top-3 left-3 text-[10px] font-mono uppercase tracking-wide px-2 py-1 rounded-md bg-black/50 border border-white/10 text-gold">Featured</span>
+          <img src="${a.logoUrl}" class="absolute top-3 right-3 w-11 h-11 rounded-xl border border-white/20 object-cover">
+          <div class="absolute bottom-0 p-4">
+            <h3 class="font-display text-white font-700 text-lg leading-tight">${escapeHtml(a.name)}</h3>
+            <p class="text-white/70 text-xs mt-0.5">${escapeHtml(a.tagline||'')}</p>
+            <div class="flex items-center gap-2 mt-2 text-white/80 text-xs">${stars(a.rating,12)}<span>${(a.rating||0).toFixed(1)}</span><span class="text-white/30">·</span><span>${fmtNum(a.downloads)}+ downloads</span></div>
+          </div>
+        </div>`).join('') || '<p class="text-ink/40 text-sm py-10">No featured apps yet — be the first to publish one.</p>'}
+      </div>
+    </section>
+
+    ${sectionRow('Trending now', trending)}
+    ${sectionRow('Games', games, '#/category/games')}
+    ${sectionRow('Top rated', topRated)}
+
+    <section class="mt-10">
+      <div class="flex items-center justify-between mb-3.5">
+        <h2 class="font-display font-600 text-lg">All apps</h2>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5">${all.map(([id,a])=>appCard(id,a)).join('') || emptyState('No apps published yet.')}</div>
+    </section>
+  `;
+  wireCards(root);
+}
+
+function sectionRow(title, entries, moreHref){
+  if(!entries.length) return '';
+  return `
+  <section class="mt-9">
+    <div class="flex items-center justify-between mb-3.5">
+      <h2 class="font-display font-600 text-lg">${title}</h2>
+      ${moreHref?`<a href="${moreHref}" class="text-sm text-brand hover:underline">See all</a>`:''}
+    </div>
+    <div class="flex gap-3.5 overflow-x-auto pb-1 -mx-1 px-1">
+      ${entries.map(([id,a])=>`<div class="w-[240px] shrink-0">${appCard(id,a)}</div>`).join('')}
+    </div>
+  </section>`;
+}
+
+function emptyState(msg){
+  return `<div class="col-span-full text-center py-16 text-ink/40 text-sm">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" class="mx-auto mb-3 opacity-50"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    ${msg}
+  </div>`;
+}
+
+let visibleCount = 12;
+function renderCategory(catId){
+  state.currentCategory = catId;
+  if(!state.appsLoaded){ root.innerHTML = `<div class="pt-6">${skeletonGrid()}</div>`; return; }
+  let entries = Object.entries(state.apps);
+  if(catId === 'trending') entries = entries.sort((a,b)=>(b[1].downloads||0)-(a[1].downloads||0));
+  else if(catId === 'top') entries = entries.sort((a,b)=>(b[1].rating||0)-(a[1].rating||0));
+  else if(catId !== 'all') entries = entries.filter(([,a]) => a.category === catId);
+
+  if(state.searchTerm){
+    entries = entries.filter(([,a]) => a.name.toLowerCase().includes(state.searchTerm) || (a.tagline||'').toLowerCase().includes(state.searchTerm));
+  }
+
+  const label = CATEGORIES.find(c=>c.id===catId)?.label || 'All Apps';
+  const shown = entries.slice(0, visibleCount);
+
+  root.innerHTML = `
+    <div class="pt-6 flex items-center justify-between">
+      <h1 class="font-display text-2xl font-700">${label}</h1>
+      <span class="text-sm text-ink/40">${entries.length} apps</span>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5 mt-5" id="cat-grid">
+      ${shown.map(([id,a])=>appCard(id,a)).join('') || emptyState('Nothing here yet.')}
+    </div>
+    ${shown.length < entries.length ? `<div class="flex justify-center mt-6"><button id="load-more" class="h-10 px-5 rounded-lg border border-line text-sm hover:border-brand/50">Load more</button></div>` : ''}
+  `;
+  wireCards(root);
+  const lm = document.getElementById('load-more');
+  if(lm) lm.onclick = () => { visibleCount += 12; renderCategory(catId); };
+
+  // infinite scroll
+  window.onscroll = debounce(() => {
+    if(state.route.name!=='category') return;
+    if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 300 && shown.length < entries.length){
+      visibleCount += 12; renderCategory(catId);
+    }
+  }, 150);
+}
+function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+
+/* ---------- App detail page ---------- */
+function renderAppPage(id){
+  const a = state.apps[id];
+  if(!a){ root.innerHTML = `<div class="pt-16">${emptyState('App not found.')}</div>`; return; }
+  root.innerHTML = `<div class="pt-6">${appDetailHtml(id,a)}</div>`;
+  wireAppDetail(id, a, root);
+  loadReviews(id, root);
+}
+function openAppDetail(id, keepScroll){
+  const a = state.apps[id];
+  if(!a) return;
+  const body = document.getElementById('app-modal-body');
+  body.innerHTML = appDetailHtml(id, a, true);
+  wireAppDetail(id, a, body);
+  loadReviews(id, body);
+  const modal = document.getElementById('app-modal');
+  if(!modal.open) modal.showModal();
+}
+
+function appDetailHtml(id, a, inModal){
+  const isBookmarked = !!(state.profile?.bookmarks?.[id]);
+  const shots = (a.screenshots && a.screenshots.length) ? a.screenshots : [];
+  return `
+  ${inModal ? `<div class="sticky top-0 z-10 flex justify-end p-3"><button data-close-app class="w-9 h-9 grid place-items-center rounded-full bg-black/40 border border-white/10"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></button></div>` : ''}
+  <div class="px-4 md:px-7 ${inModal?'-mt-8 pb-8':'pb-10'}">
+    <div class="flex gap-4">
+      <img src="${a.logoUrl}" class="w-20 h-20 md:w-24 md:h-24 rounded-2xl border border-line object-cover shrink-0" onerror="this.src='https://api.iconify.design/ph:app-window.svg?color=%237C5CFC&width=200'">
+      <div class="min-w-0 pt-1">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <h1 class="font-display text-xl md:text-2xl font-700">${escapeHtml(a.name)}</h1>
+          ${a.verified?'<svg width="16" height="16" viewBox="0 0 24 24"><path d="m9 12 2 2 4-4" stroke="#20E3D2" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="#20E3D2" stroke-width="1.4"/></svg>':''}
+        </div>
+        <p class="text-ink/50 text-sm mt-0.5">${escapeHtml(a.developer||'Unknown developer')}</p>
+        <div class="flex items-center gap-3 mt-2 text-xs text-ink/60 flex-wrap">
+          <span class="flex items-center gap-1">${stars(a.rating,13)}<b class="text-ink">${(a.rating||0).toFixed(1)}</b>(${fmtNum(a.ratingCount)})</span>
+          <span class="text-ink/25">·</span><span>${fmtNum(a.downloads)}+ downloads</span>
+          <span class="text-ink/25">·</span><span>${escapeHtml(a.size||'—')}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2.5 mt-5">
+      <button id="dl-btn" data-id="${id}" class="flex-1 h-11 rounded-lg bg-brand hover:bg-brand-dim text-white text-sm font-medium flex items-center justify-center gap-2">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Download APK
+      </button>
+      <button data-bookmark="${id}" class="w-11 h-11 grid place-items-center rounded-lg border border-line ${isBookmarked?'text-gold border-gold/40':'text-ink/60'}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="${isBookmarked?'currentColor':'none'}"><path d="M6 4h12v17l-6-3.5L6 21V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      </button>
+      <button data-share="${id}" class="w-11 h-11 grid place-items-center rounded-lg border border-line text-ink/60">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="18" cy="5" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="6" cy="12" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19" r="2.4" stroke="currentColor" stroke-width="1.7"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4" stroke="currentColor" stroke-width="1.7"/></svg>
+      </button>
+      ${(state.user && a.developerUid===state.user.uid) ? `<button data-del="${id}" class="w-11 h-11 grid place-items-center rounded-lg border border-flare/40 text-flare"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-.8 12.1a2 2 0 0 1-2 1.9H9.8a2 2 0 0 1-2-1.9L7 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>`:''}
+    </div>
+
+    ${shots.length ? `
+    <div class="flex gap-3 overflow-x-auto mt-6 pb-1">
+      ${shots.map(s=>`<img src="${s}" class="h-48 rounded-xl border border-line object-cover shrink-0">`).join('')}
+    </div>` : ''}
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 text-xs">
+      ${infoTile('Version','v'+escapeHtml(a.version||'1.0'))}
+      ${infoTile('Requires',escapeHtml(a.requirements||'—'))}
+      ${infoTile('Package',escapeHtml(a.packageName||'—'))}
+      ${infoTile('Updated',a.updatedAt?timeAgo(a.updatedAt):'—')}
+    </div>
+
+    <div class="mt-7">
+      <h2 class="font-display font-600 mb-2">About this app</h2>
+      <div id="desc-block" class="prose-desc text-sm text-ink/70 leading-relaxed line-clamp-4">${mdLite(a.description||'No description provided.')}</div>
+      <button id="desc-toggle" class="text-brand text-sm mt-1.5 hover:underline">Read more</button>
+    </div>
+
+    ${a.whatsNew ? `<div class="mt-6 rounded-xl border border-line p-4">
+      <h3 class="font-display font-600 text-sm mb-1">What's new</h3>
+      <p class="text-sm text-ink/60">${escapeHtml(a.whatsNew)}</p>
+    </div>` : ''}
+
+    <div class="mt-8">
+      <div class="flex items-center justify-between">
+        <h2 class="font-display font-600">Ratings & reviews</h2>
+        <span class="flex items-center gap-1 text-sm">${stars(a.rating,14)}<b>${(a.rating||0).toFixed(1)}</b></span>
+      </div>
+
+      <div class="mt-4 rounded-xl border border-line p-4">
+        <p class="text-sm text-ink/60 mb-2">Rate this app</p>
+        <div class="flex items-center gap-1" id="star-input">
+          ${[1,2,3,4,5].map(i=>`<button data-star="${i}" class="rating-star">${starSvg(false)}</button>`).join('')}
+        </div>
+        <textarea id="review-text" rows="2" placeholder="Share your experience (optional)" class="w-full mt-3 bg-base border border-line rounded-lg p-3 text-sm outline-none focus:border-brand/60 resize-none"></textarea>
+        <button id="submit-review" data-id="${id}" class="mt-2 h-9 px-4 rounded-lg bg-brand text-white text-sm font-medium">Post review</button>
+      </div>
+
+      <div id="reviews-list" class="mt-5 flex flex-col gap-4">
+        <div class="skel h-16 rounded-xl"></div>
+      </div>
+    </div>
+  </div>
+  `;
+}
+function infoTile(label,val){ return `<div class="rounded-lg border border-line p-2.5"><div class="text-ink/40">${label}</div><div class="mt-0.5 font-medium truncate">${val}</div></div>`; }
+function starSvg(filled){ return `<svg width="22" height="22" viewBox="0 0 24 24"><path d="m12 3 2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 16.9l-5.6 3.2 1.4-6.3-4.8-4.3 6.4-.6L12 3Z" fill="${filled?'#F5B93E':'none'}" stroke="#F5B93E" stroke-width="1.3"/></svg>`; }
+function mdLite(text){
+  return escapeHtml(text).split(/\n{2,}/).map(p=>`<p>${p.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')}</p>`).join('');
+}
+
+function wireAppDetail(id, a, container){
+  container.querySelectorAll('[data-close-app]').forEach(b => b.onclick = () => document.getElementById('app-modal').close());
+  container.querySelectorAll('[data-bookmark]').forEach(b => b.onclick = () => { toggleBookmark(id); const modalOpen=document.getElementById('app-modal').open; if(modalOpen) openAppDetail(id); else renderAppPage(id); });
+  const delBtn = container.querySelector('[data-del]'); if(delBtn) delBtn.onclick = () => deleteApp(id);
+  const shareBtn = container.querySelector('[data-share]');
+  if(shareBtn) shareBtn.onclick = async () => {
+    const url = location.origin + location.pathname + '#/app/' + id;
+    if(navigator.share){ try{ await navigator.share({ title:a.name, text:a.tagline, url }); }catch(e){} }
+    else { await navigator.clipboard.writeText(url); toast('Link copied','success'); }
+  };
+  const descBlock = container.querySelector('#desc-block');
+  const descToggle = container.querySelector('#desc-toggle');
+  descToggle.onclick = () => { descBlock.classList.toggle('line-clamp-4'); descToggle.textContent = descBlock.classList.contains('line-clamp-4') ? 'Read more' : 'Show less'; };
+
+  const dlBtn = container.querySelector('#dl-btn');
+  dlBtn.onclick = () => {
+    if(dlBtn.dataset.busy) return;
+    dlBtn.dataset.busy = '1';
+    let t = 5;
+    dlBtn.innerHTML = `Preparing… ${t}s`;
+    const iv = setInterval(() => {
+      t--;
+      if(t<=0){
+        clearInterval(iv);
+        incrementDownload(id);
+        if(a.downloadUrl && a.downloadUrl !== '#') window.location.href = a.downloadUrl;
+        dlBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/></svg> Downloaded`;
+        toast('Download started','success');
+        delete dlBtn.dataset.busy;
+      } else {
+        dlBtn.textContent = `Preparing… ${t}s`;
+      }
+    }, 1000);
+  };
+
+  // star input
+  let picked = 0;
+  const starBtns = container.querySelectorAll('#star-input [data-star]');
+  starBtns.forEach(btn => btn.onclick = () => {
+    picked = Number(btn.dataset.star);
+    starBtns.forEach(b => b.innerHTML = starSvg(Number(b.dataset.star) <= picked));
+  });
+  const submitBtn = container.querySelector('#submit-review');
+  submitBtn.onclick = () => {
+    if(!picked){ toast('Pick a star rating first','error'); return; }
+    const text = container.querySelector('#review-text').value.trim();
+    submitReview(id, picked, text);
+  };
+}
+
+async function loadReviews(id, container){
+  const listEl = container.querySelector('#reviews-list');
+  try{
+    const snap = await db.ref('reviews/'+id).get();
+    const reviews = snap.exists() ? Object.values(snap.val()).sort((a,b)=>b.timestamp-a.timestamp) : [];
+    listEl.innerHTML = reviews.length ? reviews.map(r => `
+      <div class="flex gap-3">
+        <img src="${r.avatar||avatarFallback(r.userName)}" class="w-9 h-9 rounded-full object-cover shrink-0">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-sm font-medium">${escapeHtml(r.userName)}</span>
+            <span class="text-xs text-ink/35">${timeAgo(r.timestamp)}</span>
+          </div>
+          ${stars(r.rating,12)}
+          ${r.text ? `<p class="text-sm text-ink/65 mt-1">${escapeHtml(r.text)}</p>` : ''}
+        </div>
+      </div>`).join('') : `<p class="text-sm text-ink/40">No reviews yet — be the first to rate this app.</p>`;
+  } catch(e){
+    listEl.innerHTML = `<p class="text-sm text-ink/40">Reviews unavailable right now.</p>`;
+  }
+}
+
+/* ---------- Publish page ---------- */
+function renderPublish(){
+  if(!requireAuth()){ navigate('#/home'); return; }
+  root.innerHTML = `
+  <div class="pt-6 max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
+    <div>
+      <h1 class="font-display text-2xl font-700 mb-1">Publish an app</h1>
+      <p class="text-sm text-ink/50 mb-6">It goes live instantly and syncs to the store for everyone.</p>
+      <form id="publish-form" class="flex flex-col gap-3.5">
+        ${field('p-name','App name','text','My App')}
+        ${field('p-tagline','Tagline','text','A one-line hook')}
+        <div>
+          <label class="text-xs text-ink/50 mb-1 block">Category</label>
+          <select id="p-category" class="w-full h-11 rounded-lg bg-base border border-line px-3 text-sm outline-none focus:border-brand/60">
+            <option value="games">Games</option>
+            <option value="mods">Mods & Tools</option>
+            <option value="tools">Tools</option>
+          </select>
+        </div>
+        ${field('p-logo','Logo image URL','url','https://…')}
+        ${field('p-screens','Screenshot URLs (comma separated)','text','https://…, https://…')}
+        ${field('p-download','Download link (APK or Drive URL)','url','https://…')}
+        <div class="grid grid-cols-2 gap-3">
+          ${field('p-version','Version','text','1.0.0')}
+          ${field('p-size','App size','text','25 MB')}
+        </div>
+        ${field('p-requirements','Requirements','text','Android 8.0+')}
+        ${field('p-package','Package name','text','com.you.app')}
+        <div>
+          <label class="text-xs text-ink/50 mb-1 block">Description</label>
+          <textarea id="p-desc" rows="4" placeholder="What does your app do?" class="w-full rounded-lg bg-base border border-line px-3 py-2.5 text-sm outline-none focus:border-brand/60 resize-none"></textarea>
+        </div>
+        <div>
+          <label class="text-xs text-ink/50 mb-1 block">What's new</label>
+          <input id="p-whatsnew" type="text" placeholder="Release notes" class="w-full h-11 rounded-lg bg-base border border-line px-3 text-sm outline-none focus:border-brand/60">
+        </div>
+        <button type="submit" class="h-11 rounded-lg bg-brand hover:bg-brand-dim text-white text-sm font-medium mt-2">Publish app</button>
+      </form>
+    </div>
+
+    <div>
+      <p class="text-xs text-ink/40 uppercase tracking-wide mb-2 font-mono">Live preview</p>
+      <div id="publish-preview"></div>
+    </div>
+  </div>`;
+
+  const form = document.getElementById('publish-form');
+  const preview = document.getElementById('publish-preview');
+  const getVal = id => document.getElementById(id).value.trim();
+  function draftApp(){
+    return {
+      name: getVal('p-name') || 'App name',
+      tagline: getVal('p-tagline'),
+      category: document.getElementById('p-category').value,
+      logoUrl: getVal('p-logo') || 'https://api.iconify.design/ph:app-window-duotone.svg?color=%237C5CFC&width=200',
+      version: getVal('p-version') || '1.0.0',
+      size: getVal('p-size') || '—',
+      rating: 0, ratingCount: 0, downloads: 0,
+    };
+  }
+  function updatePreview(){ preview.innerHTML = appCard('preview', draftApp()); }
+  form.addEventListener('input', updatePreview);
+  updatePreview();
+
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    if(!getVal('p-name') || !getVal('p-download')){ toast('App name and download link are required','error'); return; }
+    const payload = {
+      name: getVal('p-name'),
+      tagline: getVal('p-tagline'),
+      category: document.getElementById('p-category').value,
+      logoUrl: getVal('p-logo') || 'https://api.iconify.design/ph:app-window-duotone.svg?color=%237C5CFC&width=200',
+      screenshots: getVal('p-screens') ? getVal('p-screens').split(',').map(s=>s.trim()).filter(Boolean) : [],
+      downloadUrl: getVal('p-download'),
+      version: getVal('p-version') || '1.0.0',
+      size: getVal('p-size') || '—',
+      requirements: getVal('p-requirements') || 'Android 8.0+',
+      packageName: getVal('p-package') || 'com.app.unknown',
+      description: getVal('p-desc'),
+      whatsNew: getVal('p-whatsnew'),
+    };
+    publishApp(payload);
+  };
+}
+function field(id,label,type,ph){
+  return `<div><label class="text-xs text-ink/50 mb-1 block">${label}</label><input id="${id}" type="${type}" placeholder="${ph}" class="w-full h-11 rounded-lg bg-base border border-line px-3 text-sm outline-none focus:border-brand/60"></div>`;
+}
+
+/* ---------- Profile page ---------- */
+function renderProfile(){
+  if(!requireAuth()){ navigate('#/home'); return; }
+  const p = state.profile;
+  const bookmarkIds = Object.keys(p.bookmarks||{});
+  const uploadedIds = Object.keys(p.uploadedApps||{});
+  root.innerHTML = `
+  <div class="pt-6 max-w-5xl mx-auto">
+    <div class="flex items-center gap-4">
+      <img src="${p.avatar || avatarFallback(p.name)}" class="w-16 h-16 rounded-full object-cover border border-line">
+      <div class="flex-1">
+        <h1 class="font-display text-xl font-700">${escapeHtml(p.name||'User')}</h1>
+        <p class="text-sm text-ink/45">${escapeHtml(state.user.email)}</p>
+      </div>
+      <button id="edit-avatar" class="h-9 px-3.5 rounded-lg border border-line text-sm hover:border-brand/50">Edit avatar</button>
+      <button id="logout-btn" class="h-9 px-3.5 rounded-lg border border-flare/40 text-flare text-sm">Log out</button>
+    </div>
+
+    <div class="mt-10">
+      <h2 class="font-display font-600 text-lg mb-3">Bookmarked apps</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+        ${bookmarkIds.map(id => state.apps[id] ? appCard(id, state.apps[id]) : '').join('') || emptyState('No bookmarks yet.')}
+      </div>
+    </div>
+
+    <div class="mt-10">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-display font-600 text-lg">Your published apps</h2>
+        <a href="#/publish" class="text-sm text-brand hover:underline">+ Publish new</a>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+        ${uploadedIds.map(id => state.apps[id] ? appCard(id, state.apps[id]) : '').join('') || emptyState('You have not published anything yet.')}
+      </div>
+    </div>
+  </div>`;
+  wireCards(root);
+  document.getElementById('logout-btn').onclick = () => { auth.signOut(); navigate('#/home'); toast('Logged out'); };
+  document.getElementById('edit-avatar').onclick = async () => {
+    const url = prompt('Paste an image URL for your new avatar:', p.avatar||'');
+    if(url === null) return;
+    await db.ref('users/'+state.user.uid+'/avatar').set(url);
+    p.avatar = url;
+    document.getElementById('profile-avatar-btn').src = url || avatarFallback(p.name);
+    renderProfile();
+  };
+}
+
+/* =========================================================================
+   MODAL / ROUTING WIRES
+   ========================================================================= */
+const appModal = document.getElementById('app-modal');
+appModal.addEventListener('click', e => { if(e.target === appModal || e.target.closest('#app-modal-body') === null) return; });
+appModal.addEventListener('cancel', () => {});
+document.addEventListener('click', e => {
+  if(e.target.id === 'app-modal') appModal.close();
+});
+
+window.addEventListener('hashchange', () => {
+  state.route = parseHash();
+  visibleCount = 12;
+  if(document.getElementById('app-modal').open && state.route.name !== 'app') document.getElementById('app-modal').close();
+  render();
+});
+
+/* deep-link support: opening #/app/xyz while already elsewhere shows modal on top of current page too */
+const _origRender = render;
+
+/* =========================================================================
+   INIT
+   ========================================================================= */
+document.getElementById('year').textContent = new Date().getFullYear();
+renderCategoryNav();
+listenAuth();
+listenApps();
+render();
+
+// service worker (best effort — file is optional; app works fine without it)
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{ /* no sw.js served, ignore */ });
+}
+</script>
+</body>
+</html>
